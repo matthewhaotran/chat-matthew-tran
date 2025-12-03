@@ -68,12 +68,19 @@ guest to test anonymous chats.
 ### High-level system diagram
 
 ```mermaid
-graph TD
-  U[User browser] -->|HTTPS| FE[Next.js app (Vercel)]
-  FE -->|Auth + DB| SB[Supabase]
-  FE -->|LLM API| BA[Baseten Model API]
-  FE -->|Static assets| VC[Vercel Edge]
-  FE <-->|DNS / TLS| CF[Cloudflare DNS<br/>matthew-tran.com]
+flowchart TD
+  U[User]
+  FE[Nextjs app]
+  SB[Supabase]
+  BA[Baseten]
+  VC[Vercel Edge]
+  CF[Cloudflare DNS]
+
+  U --> FE
+  FE --> SB
+  FE --> BA
+  FE --> VC
+  FE --> CF
 ```
 
 ### Request flow: chat completion
