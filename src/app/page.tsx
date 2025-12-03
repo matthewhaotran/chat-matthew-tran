@@ -14,9 +14,13 @@ export default function Home() {
   const [user, setUser] = useState<User | null>(null);
   const [guestId, setGuestId] = useState<string | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const [errorBanner, setErrorBanner] = useState<
+    { kind: "warning" | "error"; text: string } | null
+  >(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -81,6 +85,8 @@ export default function Home() {
     const trimmed = input.trim();
     if (!trimmed || isSending) return;
 
+    setErrorBanner(null);
+
     const userMessage: ChatMessage = {
       id: crypto.randomUUID(),
       role: "user",
@@ -114,14 +120,34 @@ export default function Home() {
       });
 
       if (!res.ok) {
-        console.error("/api/chat error", await res.text());
-        const errorMessage: ChatMessage = {
-          id: crypto.randomUUID(),
-          role: "assistant",
-          content:
-            "There was an error contacting the model. Please try again shortly.",
-        };
-        setMessages((prev) => [...prev, errorMessage]);
+        let friendly =
+          "There was an error contacting the model. Please try again shortly.";
+        let kind: "warning" | "error" = "error";
+
+        try {
+          const data = (await res.json()) as { error?: string };
+          const serverError =
+            typeof data?.error === "string" ? data.error : undefined;
+
+          if (res.status === 429) {
+            kind = "warning";
+            friendly =
+              serverError ??
+              "You are sending messages quickly. Please wait a moment before trying again.";
+          } else if (res.status === 403) {
+            kind = "warning";
+            friendly =
+              serverError ??
+              "Guest conversations are limited. Sign in with Google to continue this conversation.";
+          } else if (serverError) {
+            friendly = serverError;
+          }
+        } catch {
+          // ignore JSON parsing issues and use the default message
+        }
+
+        console.error("/api/chat error", res.status);
+        setErrorBanner({ kind, text: friendly });
         return;
       }
 
@@ -137,15 +163,13 @@ export default function Home() {
       if (json.message) {
         setMessages((prev) => [...prev, json.message!]);
       }
+      setErrorBanner(null);
     } catch (error) {
       console.error("Error sending message", error);
-      const errorMessage: ChatMessage = {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        content:
-          "Something went wrong while sending your message. Please try again.",
-      };
-      setMessages((prev) => [...prev, errorMessage]);
+      setErrorBanner({
+        kind: "error",
+        text: "Something went wrong while sending your message. Please try again.",
+      });
     } finally {
       setIsSending(false);
     }
@@ -162,10 +186,10 @@ export default function Home() {
       <header className="flex items-center justify-between border-b border-zinc-800 px-4 py-3 sm:px-6">
         <div className="flex flex-col gap-1">
           <h1 className="text-lg font-semibold tracking-tight sm:text-xl">
-            chat.matthew-tran.com
+            Baseten-powered chat
           </h1>
           <p className="text-xs text-zinc-400 sm:text-sm">
-            Forward Deployed Engineer demo • Baseten-powered chat (stub)
+            Chat interface backed by Baseten and Supabase.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -181,14 +205,44 @@ export default function Home() {
             </button>
           ) : (
             <button
-              onClick={handleGoogleSignIn}
+              onClick={() => setIsLoginOpen(true)}
               className="rounded-full bg-white px-3 py-1 text-xs font-medium text-zinc-900 hover:bg-zinc-200"
             >
-              Continue with Google
+              Log in
             </button>
           )}
         </div>
       </header>
+
+      {isLoginOpen && !user && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60">
+          <div className="w-full max-w-sm rounded-2xl border border-zinc-800 bg-zinc-950 px-5 py-4 shadow-xl">
+            <h2 className="text-sm font-semibold text-zinc-50">Sign in</h2>
+            <p className="mt-1 text-xs text-zinc-400">
+              Sign in with Google to sync your conversations across devices.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsLoginOpen(false)}
+                className="rounded-full border border-zinc-700 px-3 py-1 text-xs font-medium text-zinc-100 hover:bg-zinc-800"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsLoginOpen(false);
+                  void handleGoogleSignIn();
+                }}
+                className="rounded-full bg-white px-3 py-1 text-xs font-medium text-zinc-900 hover:bg-zinc-200"
+              >
+                Continue with Google
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <main className="flex flex-1 flex-col items-center px-4 py-4 sm:px-6 sm:py-6">
         <div className="flex w-full max-w-3xl flex-1 flex-col overflow-hidden rounded-2xl border border-zinc-800 bg-zinc-900/60">
@@ -196,7 +250,8 @@ export default function Home() {
             <div className="flex flex-col gap-1">
               <p className="text-sm font-medium text-zinc-100">Chat</p>
               <p className="text-xs text-zinc-400">
-                Ask anything. Responses are placeholder until Baseten is wired.
+                Ask questions, explore ideas, and iterate with an LLM powered by
+                Baseten.
               </p>
             </div>
             <span className="rounded-full bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">
@@ -204,13 +259,22 @@ export default function Home() {
             </span>
           </div>
 
+          {errorBanner && (
+            <div
+              className={`border-b px-4 py-2 text-xs sm:text-sm ${
+                errorBanner.kind === "warning"
+                  ? "border-amber-500/40 bg-amber-500/10 text-amber-200"
+                  : "border-rose-500/40 bg-rose-500/10 text-rose-200"
+              }`}
+            >
+              {errorBanner.text}
+            </div>
+          )}
+
           <div className="flex-1 space-y-4 overflow-y-auto bg-zinc-950 px-4 py-4 sm:px-6">
             {messages.length === 0 ? (
               <div className="mt-8 text-center text-sm text-zinc-500">
                 <p>Start a conversation by typing a message below.</p>
-                <p className="mt-1">
-                  You can use this as a demo of guest vs Google-authenticated chat.
-                </p>
               </div>
             ) : (
               messages.map((message) => (

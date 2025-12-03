@@ -6,6 +6,53 @@ type IncomingMessage = {
   content: string;
 };
 
+const rateLimitStore = new Map<
+  string,
+  { count: number; windowStart: number }
+>();
+
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX_REQUESTS = 20;
+const MAX_GUEST_MESSAGES = 12;
+const MAX_AUTH_MESSAGES = 40;
+
+function getClientIdentifier(
+  request: NextRequest,
+  userId: string | null,
+  guestId: string | null,
+) {
+  const ipHeader = request.headers.get("x-forwarded-for");
+  const ipFromHeader = ipHeader?.split(",")[0]?.trim();
+  const ip = ipFromHeader ?? null;
+
+  if (userId) return `user:${userId}`;
+  if (guestId) return `guest:${guestId}`;
+  if (ip) return `ip:${ip}`;
+  return "anonymous";
+}
+
+function isRateLimited(key: string) {
+  const now = Date.now();
+  const entry = rateLimitStore.get(key);
+
+  if (!entry) {
+    rateLimitStore.set(key, { count: 1, windowStart: now });
+    return false;
+  }
+
+  if (now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
+    rateLimitStore.set(key, { count: 1, windowStart: now });
+    return false;
+  }
+
+  entry.count += 1;
+  if (entry.count > RATE_LIMIT_MAX_REQUESTS) {
+    return true;
+  }
+
+  return false;
+}
+
 function makeClientMessageId() {
   return `assistant-${Math.random().toString(36).slice(2)}`;
 }
@@ -57,6 +104,27 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  const clientKey = getClientIdentifier(request, userId, guestId ?? null);
+  if (isRateLimited(clientKey)) {
+    return NextResponse.json(
+      { error: "Rate limit exceeded. Please wait a moment and try again." },
+      { status: 429 },
+    );
+  }
+
+  const isAuthenticated = Boolean(userId);
+  const maxMessages = isAuthenticated ? MAX_AUTH_MESSAGES : MAX_GUEST_MESSAGES;
+
+  if (!isAuthenticated && messages.length > maxMessages) {
+    return NextResponse.json(
+      {
+        error:
+          "Guest conversations are limited. Sign in with Google to continue this conversation.",
+      },
+      { status: 403 },
+    );
+  }
+
   let resolvedConversationId = conversationId ?? null;
 
   if (!resolvedConversationId) {
@@ -102,13 +170,15 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  const limitedMessages = messages.slice(-maxMessages);
+
   const basetenMessages = [
     {
       role: "system" as const,
       content:
-        "You are a helpful assistant inside a Baseten-powered chat demo for a Forward Deployed Engineer portfolio project.",
+        "You are a helpful assistant inside a Baseten-powered chat application.",
     },
-    ...messages,
+    ...limitedMessages,
   ];
 
   const startedAt = Date.now();
