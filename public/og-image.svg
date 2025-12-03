@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#020617" />
+      <stop offset="100%" stop-color="#022c22" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)" />
+  <rect x="80" y="120" width="1040" height="390" rx="32" fill="#020617" stroke="#10b981" stroke-width="2" opacity="0.9" />
+  <text x="120" y="230" fill="#a7f3d0" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif" font-size="28" letter-spacing="0.12em" textLength="480">
+    MATTHEW TRAN
+  </text>
+  <text x="120" y="310" fill="#ecfdf5" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif" font-size="60" font-weight="700">
+    Baseten-powered chat
+  </text>
+  <text x="120" y="365" fill="#6ee7b7" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif" font-size="24">
+    Next.js · Supabase · Baseten · Vercel
+  </text>
+  <circle cx="1020" cy="210" r="8" fill="#22c55e" />
+  <circle cx="1050" cy="210" r="8" fill="#22c55e" opacity="0.6" />
+  <circle cx="1080" cy="210" r="8" fill="#22c55e" opacity="0.3" />
+  <rect x="120" y="405" width="520" height="80" rx="18" fill="#022c22" stroke="#16a34a" stroke-width="1.5" />
+  <text x="145" y="452" fill="#bbf7d0" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif" font-size="22">
+    Ask questions, explore ideas, ship fast.
+  </text>
+  <text x="120" y="540" fill="#9ca3af" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'SF Pro Text', sans-serif" font-size="22">
+    chat.matthew-tran.com
+  </text>
+</svg>
